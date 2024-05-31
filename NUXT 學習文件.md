@@ -1,3 +1,6 @@
+npx nuxi@latest init <project-name>
+npx nuxi init nuxt-app
+
 nvm list
 node -v
 nvm use
@@ -7,7 +10,6 @@ nvm use
 https://ithelp.ithome.com.tw/users/20152617/ironman/5934?page=1
 
 #### [Day 06]
-
 #### Nuxt 3 目錄結構與自動載入 (Auto Imports)
 
 Nuxt 3 在目錄的結構與命名其實有一定的規則與模式，"Nuxt 3 框架希望我們可以專注在開發而不是在配置"
@@ -578,13 +580,640 @@ Step 2. 添加 元件
 如果你有注意到，default.vue 檔案內程式碼內，有一個插槽 <slot />，這裡就會是 <NuxtLayout> 內的元素所顯示的位置。
 例如，我們在 app.vue 稍作調整：
 
+<template>
+  <div class="m-4 bg-white">
+    <p class="pb-4 text-2xl text-slate-600">這裡是最外層 app.vue</p>
+    <NuxtLayout name="default">
+      <p class="px-6 pt-4 text-xl text-slate-800">
+        被 NuxtLayout 包裹的元件將會放置到 Layout 的 slot 中
+      </p>
+    </NuxtLayout>
+  </div>
+</template>
+
+被 <NuxtLayout name="default"> 包裹的元素，就會在布局模板中的插槽 <slot /> 顯示。
+
+(這段的概念有點像，可以建立通用模板，模板會被自動引入，不用顯式 import，就可以使用，然後模板內，會內置一個預設 slot 元素，用途是用在，當如果我門直接在 NuxtLayout 包裹範圍內撰寫元素時，就會顯現在 slot 的位置)
+
+### 在布局模板中建立多個插槽
+當然，你也可以在布局模板中添加多個插槽，並給予名稱，這樣就可以將內容安排到特定的位置。
+
+Step 1. 建立兩個具名的插槽 (Slot)，分別為 header 與 footer
+
+如果插槽沒有給予 name 屬性，預設為 default。
+./layouts/default.vue 檔案內容如下：
+
+<template>
+  <div class="bg-sky-100 py-2">
+    <p class="px-6 py-4 text-2xl text-gray-700">這是預設的布局，全部頁面都會使用到</p>
+    <slot name="header" />
+    <slot />
+    <slot name="footer" />
+  </div>
+</template>
+
+Step 2. 將不同內容，顯示於指定的插槽位置。
+app.vue，內容如下：
+
+<template>
+  <div>
+    這裡是最外層 app.vue
+    <NuxtLayout name="default">
+      <template #header>
+        <p class="px-6 pt-4 text-xl text-green-500">這段會放置在 header 插槽</p>
+      </template>
+      <template #default> <!-- Layout 內沒有設定 name 的 slot 就是 default -->
+        <p class="px-6 pt-4 text-xl text-slate-800">
+          被 NuxtLayout 包裹的元件將會放置到 Layout 的 slot 中
+        </p>
+      </template>
+      <template #footer>
+        <p class="px-6 pt-4 text-xl text-blue-500">這段會放置在 footer 插槽</p>
+      </template>
+    </NuxtLayout>
+  </div>
+</template>
+
+布局模板呈現
+下圖可以看見，我們就可以依此來安排各個元件，於布局模板插槽的所在位置。
+
+### 布局模板與路由頁面
+
+當你熟悉了插槽配置，你也可以在其中添加 <NuxtPage /> 與建立 pages 下的頁面元件，以達到不同的路由頁面，使用相同的布局方式。
+
+如果布局模板結合了路由頁面，整體網站就會如下的巢狀顯示方式，網站的入口點 app.vue 放置布局模板，模板內的內容則使用路由的 <NuxtPage />，最後各個路由的頁面就會在 <NuxtPage /> 容器中顯示。
+
+
++---------------------------+
+| app.vue                   |
+| +-----------------------+ |
+| | layout                | |
+| | +-------------------+ | |
+| | | page              | | |
+| | |                   | | |
+| | |                   | | |
+| | +-------------------+ | |
+| +-----------------------+ |
++---------------------------+
+
+### 建立布局模板與路由頁面
+Step 1. 調整 app.vue 入口點
+將 app.vue 調整為以下內容：
+
+<template>
+  <div class="m-4 bg-white">
+    <p class="pb-4 text-2xl text-slate-600">這裡是最外層 app.vue</p>
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </div>
+</template>
+
+Step 2. 建立路由頁面
+建立 ./pages/index.vue，內容如下：
+<template>
+  <div class="m-6 bg-slate-50 py-24">
+    <div class="flex flex-col items-center">
+      <h1 class="text-6xl font-semibold text-sky-400">2022 iThome</h1>
+      <p class="mt-4 text-9xl font-bold text-gray-600">鐵人賽</p>
+    </div>
+  </div>
+</template>
+
+多個路由頁面共用預設布局模板
+承上，我們建立好預設的布局模板，讓它負責顯示路由的頁面。
+
+Step 1. 新增路由頁面
+新增 ./pages/about.vue，內容如下：
+<template>
+  <div class="mx-6 mb-4 bg-slate-50 py-24">
+    <div class="flex flex-col items-center">
+      <h1 class="text-6xl font-semibold text-yellow-400">大家好！我是 Ryan</h1>
+      <p class="my-8 text-3xl text-gray-600">這裡是 /about</p>
+    </div>
+  </div>
+</template>
+
+新增 ./pages/contact.vue，內容如下：
+
+<template>
+  <div class="mx-6 mb-4 bg-slate-50 py-24">
+    <div class="flex flex-col items-center">
+      <h1 class="text-6xl font-semibold text-rose-400">如果沒事不要找我 xDDD</h1>
+      <p class="my-8 text-3xl text-gray-600">這裡是 /contact</p>
+    </div>
+  </div>
+</template>
+
+Step 2. 新增路由連結
+調整 ./pages/index.vue，內容如下：
+
+<template>
+  <div class="mx-6 mb-4 bg-white py-24">
+    <div class="flex flex-col items-center">
+      <h1 class="text-6xl font-semibold text-gray-800">這裡是首頁</h1>
+      <div class="my-4 flex space-x-4">
+        <NuxtLink to="/about">前往 About</NuxtLink>
+        <NuxtLink to="/contact">前往 Contact</NuxtLink>
+      </div>
+    </div>
+  </div>
+</template>
+布局模板與路由頁面呈現
+可以發現，現在首頁 /、/about 與 /contact 都套用上了預設布局。
+
+
+### 建立多個布局模板
+你也可以建立多個布局模板，再依據不同的情境，使用不同的布局模板。
+使用指定的布局模板
+Step 1. 建立新的布局模板
+新增 ./layouts/custom.vue，內容如下：
+
+<template>
+  <div class="bg-rose-100 py-2">
+    <p class="px-6 py-4 text-2xl text-gray-700">
+      使用 <span class="font-bold text-rose-500">Custom</span> 布局
+    </p>
+    <slot />
+  </div>
+</template>
+
+Step 2. 新增一個路由頁面
+新增 ./pages/custom.vue，內容如下：
+
+<template>
+  <div class="m-6 bg-slate-50 py-24">
+    <div class="flex flex-col items-center">
+      <h1 class="text-6xl font-semibold text-sky-400">2022 iThome</h1>
+      <p class="mt-4 text-9xl font-bold text-gray-600">鐵人賽</p>
+    </div>
+  </div>
+</template>
+
+
+Step 3. 使用指定布局模板
+在 ./pages/custom.vue 中的 script 使用 definePageMeta 方法：
+
+<script setup>
+definePageMeta({
+  layout: 'custom'
+})
+</script>
+布局模板與路由頁面的呈現
+definePageMeta 方法，提供我們可以設定特定的布局模板，layout 參數值所對應的名稱，即為 ./layouts 目錄下的布局模板。
+
+注意，布局模板的命名被規範使用 Kebab Case 命名法，若檔案名稱為 customLayout.vue，它將會以 custom-layout 作為 name 屬性傳遞給
+
+
+**(注意，這邊沒有找到 option API 的解法，屆時要注意)**
+
+更進階的指定布局模板
+我們能使用 layout: false 來禁止使用預設的布局模板，並在 template 添加 <NuxtLayout name="custom"> 來使用 custom 布局模板。
+
+<template>
+  <NuxtLayout name="custom">
+    <div class="mx-6 mb-4 bg-white py-24">
+      <div class="flex flex-col items-center">
+        <h1 class="text-6xl font-semibold text-sky-400">2022 iThome</h1>
+        <p class="mt-4 text-9xl font-bold text-gray-600">鐵人賽</p>
+      </div>
+    </div>
+  </NuxtLayout>
+</template>
+
+<script step>
+definePageMeta({
+  layout: false
+})
+</script>
+
+當布局模板可以在 template 中設定使用，我們就能結合插槽甚至動態的調整 name 屬性，做出更多樣靈活的布局效果。
+
+上圖的參考程式碼：
+./layouts/custom.vue
+
+<template>
+  <div class="bg-rose-100 py-2">
+    <p class="px-6 py-4 text-2xl text-gray-700">
+      使用 <span class="font-bold text-rose-500">Custom</span> 布局
+    </p>
+    <slot />
+    <slot name="footer" />
+  </div>
+</template>
+
+./pages/custom.vue
+
+<template>
+  <NuxtLayout name="custom">
+    <template #default>
+      <div class="mx-6 mb-4 bg-white py-24">
+        <div class="flex flex-col items-center">
+          <h1 class="text-6xl font-semibold text-sky-400">2022 iThome</h1>
+          <p class="mt-4 text-9xl font-bold text-gray-600">鐵人賽</p>
+        </div>
+      </div>
+    </template>
+    <template #footer>
+      <div class="flex flex-col items-center">
+        <p class="mt-4 text-xl text-slate-600">感謝您閱讀 Nuxe 3 學習筆記～</p>
+      </div>
+    </template>
+  </NuxtLayout>
+</template>
+
+<script step>
+definePageMeta({
+  layout: false
+})
+</script>
+
+當你使用 definePageMeta 方法，禁止使用預設的布局模板後，你也能使用 setPageLayout 方法來動態改變布局。
+例如：
+
+<script setup>
+const enableCustomLayout = () => {
+  setPageLayout('custom')
+}
+</script>
+
+實戰練習
+我們將這篇所介紹的布局模板與路由頁面的配置方式與特性熟悉之後，我們就來做一個小練習。
+
+使用預設布局模板，使得每一個路由頁面都能有 Header，點擊「Nuxt 3 學習筆記」隨時可以回至首頁，並將其中一個頁面禁止使用預設布局，改採用自訂的布局模板。
+
+小結
+當你看過了這篇內容後，你會發現 Nuxt 3 所提供的布局模板非常的好用，布局模板規劃好後，爾後頁面所使用到的相同布局，只需要更改同一個布局模板，如果再結合元件化技巧，更是讓你的程式碼兼具重複使用性與維護性。
 
 
 
 
+### Nuxt 3.x 搭配 CSS Framework－以 Bootstrap 5 為例
+https://ithelp.ithome.com.tw/articles/10330532
+
+在 Nuxt 專案中，我們可以自由選擇 CSS 預處理器、CSS 框架或是 UI Library 來定義樣式。在 CSS 框架百家爭鳴的時代，這幾年熱門的 Tailwind CSS、基於 Vue.js 開發的 Quasar、或是搭配 Vue3 開發的 Element Plus 都能快速上手，協助我們打造精美的網站。
+
+由於工作上較常使用 Bootstrap 協作，本篇將以 Bootstrap 5 搭配 SCSS 進行說明。
+
+Bootstrap 5 簡介
+
+
+Bootstrap 有豐富的 Sass 變數、mixins、網格系統、元件、JS 插件，Bootstrap 5 與先前版本最大的不同，除了將 jQuery 從相依項目中移除，也新增 Utilities API（基於 Sass Maps 生成 Utilities Class），可以更簡易的管理或擴充樣式，不需手刻太多 CSS 即可完成多元、複雜的畫面。
+
+套件安裝
+npm install bootstrap
+npm install sass
+使用 Bootstrap 樣式搭配自訂樣式
+在 assets/ 靜態資源目錄定義 SCSS，範例 assets/scss/app.scss，需注意 Bootstrap 樣式與自訂樣式引入順序：
+
+不建議直接引入整包 bootstrap components bootstrap/scss/bootstrap ，選擇需要的樣式引入即可，避免 CSS 檔案過大，造成系統負擔
+
+// assets/scss/app.scss
+
+/** 1. 引入 functions，才能操控 color, svg, calc... */
+@import "bootstrap/scss/functions";
+
+/** 2. 自訂變數置於 bootstrap variables 前，覆蓋 bootstrap 變數 */
+@import "./color";
+@import "./variables";
+
+/** 3. 引入 variables, mixins, root */
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import 'bootstrap/scss/maps';
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/root";
+
+/** 4. 引入 utilities */
+@import "~bootstrap/scss/utilities";
+
+/** 5. 自訂、擴充、調整 utilities */
+@import "./utilities";
+
+/** 6. 引入需要的 bootstrap components */
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
+@import "bootstrap/scss/tables";
+@import "bootstrap/scss/forms";
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/helpers";
+/** ... */
+
+/** 7. 使用 utilities 需引入 utilities api（將 sass map 轉換為 utility classes） */
+@import "bootstrap/scss/utilities/api";
+
+/** 8. 客製樣式置於最後，覆蓋前面的樣式 */
+@import "./style";
+自訂樣式檔案結構：
+
+assets/
+|—— scss/
+  |—— app.scss
+  |—— _color.scss
+  |—— _variables.scss
+  |—— _style.scss
+自訂、擴充、調整 utilities：
+
+透過 map-merge 合併 bootstrap utilities，詳細定義方式參考 官方文件
+
+// assets/scss/utilities.scss
+$utilities: map-merge(
+  $utilities,
+  (
+    "cursor": (
+      property: cursor,
+      class: cursor,
+      responsive: true,
+      values: auto pointer grab
+    )
+  )
+);
+配置全域共用 CSS
+接著在 nuxt.config 配置全域共用 CSS，接下來整個專案 HTML 都能使用編譯後的樣式
+
+// nuxt.config.js
+export default defineNuxtConfig({
+  css: [
+    '@/assets/scss/app.scss'
+  ],
+  postcss: { // CSS 屬性加上瀏覽器相容性前綴
+    plugins: {
+      autoprefixer: true
+    }
+  }
+})
+Nuxt 專案已內建 postcss，加上 autoprefixer: true 會自動為屬性加上瀏覽器相容性前綴
+範例定義以下樣式：
+
+.container {
+  display: flex;
+}
+編譯後的 CSS：
+
+.container {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+}
+定義全域共用 Sass / SCSS 變數（搭配 Vite）
+如果想在 .vue 檔內的 <style> 直接使用 Sass / SCSS 變數，需搭配 preprocessorOptions 進行配置
+
+// nuxt.config.js
+export default defineNuxtConfig({
+  vite: {
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: `
+            @import "@/assets/scss/_color.scss";
+            @import "@/assets/scss/_variables.scss";
+          `
+        }
+      }
+    }
+  }
+});
+// assets/scss/_color.scss
+$primary: #49240F;
+$secondary: #E4A79D;
+接著就可以在 SCF（單一元件檔）使用 SCSS 變數
+
+// pages/hello.vue
+<template>
+  <div>
+    <h1>Hello World</h1>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+h1 {
+  color: $primary;
+}
+</style>
+加上 scoped，將樣式作用域限制在元件內，避免造成全域污染，如果希望樣式可以渲染到子元件，透過 :deep() 定義如下
+
+:deep(p) {
+	color: $primary;
+}
+使用 Bootstrap Plugins
+在 plugins/ 目錄註冊 Bootstrap JavaScript Plugins
+
+新增 plugins/bootstrap.client.js
+注意：Nuxt 會自動引入（auto imports）plugins，bootstrap plugins 要限制在 client 端使用，否則會拋錯 document is not defined ，檔名需加上 .client 後綴
+
+透過 Provide 定義全局變數，將需要的 Bootstrap Plugins 注入到 NuxtApp
+// plugins/bootstrap.client.js
+import * as bootstrap from 'bootstrap';
+const { Modal, Collapse } = bootstrap;
+
+export default defineNuxtPlugin(_nuxtApp => {
+  return {
+    provide: {
+      bootstrap: {
+        modal: element => new Modal(element),
+        collapse: element => new Collapse(element)
+      }
+    }
+  };
+});
+使用 Modal Plugins
+// pages/about.vue
+<template>
+  <div>
+    <div class="modal fade" tabindex="-1" ref="modalRef">
+      <div class="modal-dialog">
+        <div class="modal-content">
+	      <div class="modal-header">
+	        ...
+          </div>
+          <div class="modal-body">
+            ...
+          </div>
+          <div class="modal-footer">
+            <button type="button" data-bs-dismiss="modal">close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn btn-success" @click="showModal">
+      點我看 Modal
+    </button>
+  </div>
+</template>
+
+<script setup>
+const { $bootstrap } = useNuxtApp();
+const modalRef = ref(null);
+let modal;
+const showModal = () => {
+  modal.show();
+};
+
+onMounted(() => {
+  modal = $bootstrap.modal(modalRef.value);
+});
+
+onBeforeUnmount(() => {
+  // 加上 dispose，避免切換頁面時或是 HMR 看到殘留畫面
+  modal.dispose();
+});
+</script>
+動態樣式
+動態樣式定義方式同 Vue3，在 CSS 使用 v-bind function
+
+// pages/hello.vue
+<template>
+  <div>
+    <h1>hello</h1>
+    <h2>world</h2>
+    <button @click="theme.color = 'red'">change color</button>
+  </div>
+</template>
+
+<script setup>
+const theme = ref({
+  color: 'green'
+});
+</script>
+
+<style lang="scss" scoped>
+h1, h2 {
+  color: v-bind('theme.color');
+}
+</style>
+
+### NUXT 整合 element-plus
+https://blog.csdn.net/m0_48489737/article/details/127325786
 
 
 
+### [Day 09]
+### Nuxt 3 元件 (Components)
+前言
+在建立 Vue 的網站開發過程中，我們可能會自己封裝元件 (Component) 讓程式碼可以被重複使用，也方便開發者維護，這些一個個的元件，可以透過全域註冊 (Global Registration) 讓整個 Vue 應用程式中都可以使用這個元件，也可以透過區域註冊 (Local Registration) 於特定的元件再載入使用。接下來我們將介紹 Nuxt 3 使用元件時應該遵循的規範及特色。
+
+
+# 元件自動載入
+在 Vue 中，雖然區域註冊使得元件間的依賴關係更加明確也對於 Tree shaking 更加友好，但我們在使用元件時，就得在需要的地方個別載入及註冊。而 Nuxt 3 提供在 components 目錄下專門放至這些元件，並具有自動載入及延遲載入等功能特色。
+
+建立與使用元件
+新增 ./components/IronManWelcome.vue，內容如下：
+
+<template>
+  <div class="bg-white py-24">
+    <div class="flex flex-col items-center">
+      <h1 class="text-6xl font-semibold text-sky-400">2022 iThome</h1>
+      <p class="mt-4 text-9xl font-bold text-gray-600">鐵人賽</p>
+    </div>
+  </div>
+</template>
+
+調整 ./app.vue，內容如下：
+
+當我們建立了 ./components/IronManWelcome.vue 檔案後，Nuxt 會自動載入 ./components 目錄中的任何元件，在使用時的元件名稱也對應著檔案名稱，所以我們只需直接添加 <IronManWelcome /> 就可以直些使用這個元件。
+
+元件名稱
+Nuxt 所自動載入 ./components 目錄下的元件，在使用時的元件名稱也對應著檔案名稱，而當你在巢狀的目錄結構下的元件，元件的名稱將會基於目錄的路徑與檔案名稱，**並刪除重複的字段**。
+
+舉例來說，如果 ./components 目錄結構如下：
+
+components/
+└── base/
+    └── apply/
+        └── Button.vue
+
+./components/base/apply/Button.vue 元件的名稱就會是由目錄與檔案名稱組合出的 <BaseApplyButton>。
+
+
+為了開發上能更清楚辨別，**建議將檔案名稱設置與使用元件時的名稱相同，所以我們重新命名 ./components/base/apply/ 下的 Button.vue 為 BaseApplyButton.vue**。
+
+components/
+└── base/
+    └── apply/
+        └── BaseApplyButton.vue
+你也不用擔心元件名稱會不會變成 <BaseApplyBaseApplyButton> 看起來有點醜醜的，因為 Nuxt 會幫我們刪除重複的字段，所以在使用時元件名稱為 <BaseApplyButton>。
+
+
+元件名稱的命名規則
+Vue 在註冊元件時，可以使用大駝峰式命名法 (Pascal Case) 或烤肉串命名法 (Kebab Case) 來為元件命名，並在 template 也可以自由使用兩種命名方式作為使用元件的標籤。
+
+例如，以 <base-apply-button> 來表示使用 ./components/base/apply/BaseApplyButton.vue 元件。
+
+抑或建立 ./components/base/apply/base-apply-button.vue 元件，使用時以 <BaseApplyButton> 表示。
+
+兩種方式 Nuxt 都支援，可以根據自己的習慣做選擇，而我個人是以大駝峰式命名法 (Pascal Case) 為主，以此區別為自己建立的元件。
+
+動態元件 (Dynamic Components)
+如果想要使用像 Vue 中的 <component :is="someComputedComponent"> 來動態的切換不同的元件，則需要使用 Vue 提供的 resolveComponentVue 方法來進行輔助。
+
+例如：
+<template>
+  <component :is="show ? DynamicComponent : 'div'" />
+</template>
+
+<script setup>
+const show = ref(false)
+const DynamicComponent = resolveComponent('BaseApplyButton')
+</script>
+
+
+建立動態元件
+Step 1. 建立元件
+新增 ./components/base/apply/BaseApplyButton.vue，內容如下：
+
+<template>
+  <button
+    type="submit"
+    class="mt-6 bg-blue-600 py-3 px-8 text-xl font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+  >
+    立即報名
+  </button>
+</template>
+新增 ./components/round/apply/RoundApplyButton.vue，內容如下：
+
+<template>
+  <button
+    type="submit"
+    class="mt-6 rounded-full bg-blue-600 py-3 px-8 text-xl font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+  >
+    立即報名
+  </button>
+</template>
+
+
+
+### Nuxt 3 資料獲取 (Data Fetching)
+
+前言
+現在的網站技術與前端框架的推進，使用 AJAX (Asynchronous JavaScript and XML) 技術發送 API 至後端進行資料獲取已經是常態，這個過程工程師們也稱敲 API 或 打 API，打 API 還衍生了幾個問題，就是我們用什麼打 API，打去哪裡，打的時候要夾東西嗎？這篇我們主要講述的就是用什麼打 API；在 Vue 的開發中，你可能會使用 axios 來串接後端 (Server) 的 API 來獲取資料，再將這些資料於網頁渲染呈現，而在 Nuxt 你也可以額外安裝類似的 HTTP Client 套件來發送 HTTP 請求，不過呢，Nuxt 已經內建了幾個好用的組合式函數，讓我們可以方便的打 API 獲取資料。
+
+# 資料獲取 (Data Fetching)
+Nuxt 提供了 $fetch 及四種組合式函數 (Composables)，來進行資料獲取，也就是說，我們不需要在額外安裝任何 HTTP Client ，如 axios來發送 HTTP 請求，因為 Nuxt 本身就自帶了打 API 的方法，而且在頁面、元件或插件中都能直接呼叫做使用，非常方便。
+
+首先，我們先介紹一下 $fetch 這個由 Nuxt 提供使用 ohmyfetch 套件所封裝的 helper，$fetch 可以在 Nuxt 中用於發送 HTTP 請求。
+
+如果在伺服器端渲染的期間，呼叫 $fetch 打內部 API 路由，也就是打我們自己在 ./server 下實作的後端 API，那麼因為使用 $fetch 的關係，Nuxt 會模擬請求，改由直接呼叫內部 API 的處理函數，這樣就能節省額外的 API 呼叫。
+
+
+使用的方法，如下：
+
+$fetch(url, options)
+我們可以使用 $fetch('/api/count') 建立一個 GET 請求，發送至 /api/count 後會返回一個 Promise，完成後我們就可以接收回傳的資料。
+
+$fetch 的 options 的參數及建立攔截器等功能可以參考 ohmyfetch https://github.com/unjs/ofetch，不過呢，我們還會使用 Nuxt 提供的組合函數結合**$fetch** 來打 API。
+
+接下來我們就來依序介紹，如何使用 Nuxt 提供的四種組合函數來從 API 獲取資料。
+
+
+### 獲取 API 資料方式
+
+https://clairechang.tw/2023/07/19/nuxt3/nuxt-v3-data-fetching/
+
+https://www.cnblogs.com/shuiche/p/17983368
+
+https://hackmd.io/@Yan06/SJgkRrhej
 
 
 
