@@ -1217,6 +1217,334 @@ https://hackmd.io/@Yan06/SJgkRrhej
 
 
 
+### [Day 17] Nuxt 3 狀態管理 - Store & Pinia
+前言
+上一篇我們介紹了如何在 Nuxt 3 使用 useState 來建立一個元件間的共享狀態，隨著專案的健壯增大，我們就需要一個更好的方式來管理與儲存這些狀態，例如在 Vue 中使用 Vuex 或 Pinia 來建立一個 Store 管理這些狀態就是一個解決方案。如果你還不了解 Pinia，可以理解為是 Vuex v5。因為目前 Pinia 已經成為 Vue 官方推薦的狀態管理解決方案，本篇將針對 Nuxt 使用 Pinia 做一個簡單的介紹。
+
+
+Pinia
+Pinia 與 Vuex
+如果你使用過 Vuex 大概會知道 Vue 如何建立 Store 來做狀態管理，隨著時間 Vuex 很積極的蒐集社群及使用者的意見來規劃 Vuex v5。Pinia 的作者 Eduardo 是 Vue.js 核心團隊的成員之一，也參與著 Vuex 的開發，當時他正測試著 Vuex v5 的提案，而 Pinia 成為探索這些意見及可能性的先驅，實現了 Vuex v5 可能的樣子，現在 Pinia 的 API 已經進入穩定狀態，也成為 Vue 官方推薦使用的狀態管理解決方案，並遵循著 Vue 生態的 RFC 流程。
+
+Pinia 相較於 Vuex 有以下差異：
+
+沒有 mutation，只需要使用 action 就可以改狀態。
+不再有 modules 巢狀的結構，也不再需要為模組定義命名空間，因為在 Pinia 中，可以定義多個 Store 而且每個都是獨立的也都具有自己的命名空間。
+更完整的支援 TypeSctipt，也不在需要使用多餘的 types 來封裝，所有的內容都是類型化的，Pinia API 的設計方式盡可能使用 TypeSctipt 類型推斷。
+非常輕巧，約僅有 1 KB，而且可以自定義插件。
+支援伺服器端渲染 (SSR) 與程式碼自動拆分。
+
+
+
+
+Nuxt 3 安裝 Pinia
+npm install -D pinia @pinia/nuxt --force
+
+添加 @pinia/nuxt 至 nuxt.config.ts 的 modules 屬性中。
+
+export default defineNuxtConfig({
+  modules: ['@pinia/nuxt']
+})
+
+建立第一個 Pinia 的 Store
+Pinia 提供了一個函數 defineStore 用來定義 store，呼叫時需要一個唯一的名稱來當作第一個參數傳遞，也稱之為 id，Pinia 會使用它來將 store 連接到 devtools。
+
+建議將回傳的函數命名為 use...，例如 useCounterStore，use 作為開頭是組合式函數命名的約定，來符合使用上的習慣。
+
+而 defineStore 的第二個參數，可以傳入 Options 物件或是 Setup 函數，例如我們使用 Opsions 來定義一個 Store，新增 ./stores/counter.js，內容如下：
+
+import { defineStore } from 'pinia'
+
+export const useCounterStore = defineStore('counter', {
+  state: () => ({
+    count: 0
+  }),
+  actions: {
+    increment() {
+      this.count += 1
+    },
+    decrement() {
+      this.count -= 1
+    }
+  },
+  getters: {
+    doubleCount: (state) => state.count * 2
+  }
+})
+
+可以發現到與 Vue 的 Options API 非常類似，我們可以傳遞帶有 state、actions 和getters 屬性的物件。這些屬性正好讓Store 與 Options API 呼應彼此的關係，如 state 對應 data、actions 對應 methods 而 getters 對應 computed 。
+
+
+還有另一種方式可以來定義 Store ，與 Vue Composition API 的 setup 函數類似，我們可以傳入一個函數，這個函數裡面定義響應式屬性、方法等函數，最後回傳我們想公開的屬性和方法所組成的物件。
+
+以 setup 函數定義 counter store，內容如下：
+
+import { defineStore } from 'pinia'
+
+export const useCounterStore = defineStore('counter', () => {
+  const count = ref(0)
+
+  const increment = () => {
+    count.value += 1
+  }
+  const decrement = () => {
+    count.value -= 1
+  }
+
+  const doubleCount = computed(() => count.value * 2)
+
+  return {
+    count,
+    increment,
+    decrement,
+    doubleCount
+  }
+})
+
+
+開始使用 Store
+我們只需要在元件中，如下程式碼匯入並呼叫 useCounterStore() 就可以操作 store 裡面的方法或屬性囉！
+
+import { useCounterStore } from '@/stores/counter'
+
+const counterStore = useCounterStore()
+我們新增一個頁面元件 ./pages/counter.vue，內容如下：
+
+<template>
+  <div class="bg-white py-24">
+    <div class="flex flex-col items-center">
+      <span class="text-9xl font-semibold text-sky-600">{{ counterStore.count }}</span>
+      <div class="mt-8 flex flex-row">
+        <button
+          class="font-base mx-2 rounded-full bg-sky-500 px-4 py-2 text-xl text-white hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2"
+          @click="counterStore.increment"
+        >
+          增加
+        </button>
+        <button
+          class="font-base mx-2 rounded-full bg-sky-500 px-4 py-2 text-xl text-white hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-offset-2"
+          @click="counterStore.decrement"
+        >
+          減少
+        </button>
+      </div>
+      <div class="mt-8">
+        <NuxtLink to="/">回首頁</NuxtLink>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { useCounterStore } from '@/stores/counter'
+
+const counterStore = useCounterStore()
+</script>
+這樣我們就完成了一個 store 的顯示狀態值，透過呼叫 counterStore 內定義的 increment 與 decrement 來改變狀態。
+
+
+
+Pinia Store 的 State
+預設情況下，可以直接對 store 的實例來取得狀態，而使用 Pinia 定義的 store 比較特別得是，我們可以不用透過呼叫函數來修改狀態，也可以直接對 sotre 的狀態進行修改。
+
+const counterStore = useCounterStore()
+
+counterStore.count += 10
+改變狀態
+除了直接使用 counterStore.count += 10 修改 store，你也可以使用 store 提供的 helper $patch 來修改部分的狀態。
+
+userStore.$patch({
+  name: 'Ryan'
+  money: '88888888',
+})
+
+
+對於集合類型的修改，例如陣列的新增、刪除或指定修改某一個元素等操作，你可以使用 $patch 傳入一個函數，這個函數會接收一個 state 讓你可以修改，對於比較複雜的操作會很方便。
+
+cartStore.$patch((state) => {
+  state.items.push({ name: 'shoes', quantity: 1 })
+  state.hasChanged = true
+})
+如果你需要，也可以將 store 的整個 state 重新設置成一個新的物件。
+
+cartStore.$state = {
+  items: [],
+  hasChanged: false,
+}
+重置狀態
+sotre 的實例提供了一個 $reset() 的 helper，呼叫它就可以將 store 的狀態重置至初始值，不過目前只在使用 Option 物件定義的 store 才有實作。
+
+const counterStore = useCounterStore()
+
+counterStore.$reset()
+
+Pinia Store 的 Getters
+使用同一個 store 中的其他 getter
+在 store 內你可以組合多個 getter，在 Option 物件下，可以透過使用 this 來呼叫使用其他的 getter。
+
+export const useStore = defineStore('main', {
+  state: () => ({
+    counter: 0,
+  }),
+  getters: {
+    doubleCount: (state) => state.counter * 2,
+    doubleCountPlusOne() {
+      return this.doubleCount + 1
+    },
+  }
+})
+
+
+使用其他 store 的 getter
+在 store 內你也可以組合其他 store 的 getter，只要建立出其他 store 實例就可以呼叫使用了。
+
+import { useOtherStore } from './other-store'
+
+export const useStore = defineStore('main', {
+  state: () => ({
+    // ...
+  }),
+  getters: {
+    otherGetter(state) {
+      const otherStore = useOtherStore()
+      return state.localData + otherStore.data
+    },
+  },
+})
+
+
+
+
+
+
+
+### 插播補充 : NUXT 水合問題
+https://medium.com/@Monster.0313/nuxt-3-%E9%96%8B%E7%99%BC%E5%BF%83%E5%BE%97-%E6%AF%94%E8%BC%83-pinia-usestate-ce778752411e
+
+server-side 跟 client-side 經過 Javascript 渲染時資料不同的問題。
+
+<template>
+  <div>
+    {{ random }}
+  </div>
+</template>
+
+<script setup>
+  const random = ref(Math.round(Math.random() * 100));
+</script>
+
+*由於，HTML 的部分包含了 random 的變數，因此在 server-side 執行渲染 HTML 傳到瀏覽器的時候，會先經過一次 Math.random() 的過程，
+而到 client-side 的時候載入了完整的 Javascript 此時又會再經過一次 Math.random() 的過程，此時會造成 random 的數值不相同。
+
+這個狀況發生的時候，我們會在 console 看見錯誤警告 Hydration text content mismatch 。
+Hydration 的中文翻譯叫「水合、補水」，字面上的意義比較艱澀，可以想像 server-side 跟 client-side 分別負責了兩件事， server-side 就是在產生模具，client-side 就是將資料、Javascript 注入這個產生好的模具中，使用這個詞來形容這個過程確實蠻生動的。
+
+
+<script setup>
+import { useCounterStore } from '~/stores/counter'
+const counterStore = useCounterStore()
+counterStore.setCount10() // 比起直接操作 counterStore.count += 10，封裝在 store 內的方法可以更好地管理狀態，也不會造成水合問題
+
+
+counterStore.$reset() // $reset() 方法可以重置整個 store
+
+counterStore.$patch({ count: 15 }) // 透過 $patch 修改 部分的值
+
+// 集合類型的修改，例如陣列的新增、刪除或指定修改某一個元素等操作，你可以使用 $patch 傳入一個函數，這個函數會接收一個 state 讓你可以修改，對於比較複雜的操作會很方便。
+// 注意 不要去增加不存在的值，會有水合問題
+counterStore.$patch((state) => {
+  state.nameObj = { name: '小王' }
+})
+
+// 生命週期鉤子可以直接在 setup 內使用
+onMounted(() => {
+  console.log('Component has been mounted')
+})
+onBeforeMount(() => {
+  console.log('Component is about to be mounted')
+})
+</script>
+
+
+理解  如果組件中直接使用 useFetch  那直接 await 是可行的
+如果使用 store 中的方法 (即使 store 中的方法也是使用 useFetch)
+那就建議要包裝在 async 函式中 
+
+是這樣嗎
+ChatGPT
+是的，正確理解。這樣做的原因是確保在使用 store 中的方法時，異步邏輯能夠被正確地管理和控制。以下是更詳細的說明和示例：
+
+使用 useFetch 在組件中
+在組件中直接使用 useFetch 是可行的，因為 useFetch 是為了在 Nuxt 中簡化數據請求而設計的，它能夠處理服務端渲染（SSR）和客戶端渲染（CSR）的異步邏輯。因此，你可以直接在 setup 函數中使用 await。
+
+示例：
+vue
+複製程式碼
+<script setup>
+import { ref } from 'vue'
+
+const { data } = await useFetch('https://backendsys.gdrentcars.com/frontend/Mall/categories/getcategories', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        datatoken: 'U8ImF2RWSh4V7gK9ljOzu1fPCZr6wtxXqTsvDdV1EbpR9YMKiH'
+    }),
+})
+const list = ref([])
+list.value = data.value
+</script>
+使用 Store 方法
+當你在組件中使用 store 的方法時，即使 store 中的方法也是使用 useFetch，建議將其包裝在一個 async 函數中。這樣做的原因是確保異步操作被正確處理，不會打亂組件的同步初始化過程。
+
+原因：
+更好的控制：將異步操作包裝在一個函數中可以更好地控制其執行和錯誤處理。
+避免潛在問題：直接 await store 方法可能導致組件初始化過程中的一些同步操作被打亂，而包裝在一個 async 函數中可以避免這些問題。
+示例：
+vue
+複製程式碼
+<script setup>
+import { useCounterStore } from '~/stores/counter'
+import { ref } from 'vue'
+
+const counterStore = useCounterStore()
+const list = ref([])
+
+const fetchList = async () => {
+  await counterStore.getList()
+  list.value = counterStore.list
+}
+
+await fetchList()
+</script>
+總結
+直接使用 useFetch：在組件中直接使用 useFetch 並 await 是可行且推薦的做法。
+使用 Store 方法：當使用 store 中的方法進行數據請求時，建議將異步操作包裝在一個 async 函數中並等待該函數的完成，這樣可以確保組件的同步初始化過程不被打亂並且異步邏輯得到正確處理。
+這樣的做法能夠確保數據在正確的時機被獲取，且不會對組件的初始化過程產生負面影響。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
